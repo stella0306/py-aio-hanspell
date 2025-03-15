@@ -21,7 +21,7 @@ class AsyncSpellChecker:
         self.spell_checker_requests_headers = spell_checker_requests_headers
         
         # 토큰 초기화
-        self.token = ""
+        self.token = None
         
         # 세션 생성
         self.session = aiohttp.ClientSession()
@@ -31,8 +31,9 @@ class AsyncSpellChecker:
         
     
     # 토큰 초기화
-    async def initialize_token(self):
+    async def _initialize_token(self):
         # 토큰을 생성합니다.
+        print("토큰을 생성합니다.")
         self.token = await self._get_token()
         
     # 토큰 생성을 요청합니다.
@@ -42,9 +43,7 @@ class AsyncSpellChecker:
             response.raise_for_status()  # 상태 코드가 200이 아닐 경우 예외 발생
             
             # 토큰 업데이트
-            # print(self._token_update(await response.text()))
             return self._token_update(await response.text())
-            # return None
     
     # 받은 토큰 텍스트를 Parse (구문 분석) 합니다.
     def _token_update(self, token):
@@ -70,13 +69,13 @@ class AsyncSpellChecker:
     async def _check_spelling_request(self, text):
         result = await self._get_response(text)
         if "error" in result["message"]:
-            await self.initialize_token()
+            await self._initialize_token()
             return await self._get_response(text)
         
         return result    
     
     # 매개변수로 받은 텍스트를 맞춤법 검사를 진행합니다.
-    async def spell_check(self, text, async_delay, is_output=False):
+    async def spell_check(self, text, async_delay):
         # 필요한 리스트 초기화
         spell_check_results = {
             "spell_checked": [],
@@ -88,7 +87,9 @@ class AsyncSpellChecker:
         
         # 리스트나 튜플을 texts 변수에 할당, 단일 텍스트를 리스트로 변환
         texts = text if isinstance(text, (list, tuple)) else [text]
-        texts_len = len(texts)
+        texts_length = len(texts)
+
+        await self._initialize_token() if self.token is None else None
         
         for idx, txt in enumerate(texts):
             if len(txt) <= 300: # 네이버 맞춤법 검사기 최대로 지원하는 글자수.
@@ -97,21 +98,17 @@ class AsyncSpellChecker:
                 spell_check_results["passed_time"].append(time.time() - start_time)
                 spell_check_results["original_text"].append(txt)
                 # 텍스트 검사 개수가 1개 보다 많으면 대기.
-                await asyncio.sleep(async_delay) if texts_len > 1 else await asyncio.sleep(0)
+                await asyncio.sleep(async_delay) if texts_length > 1 else await asyncio.sleep(0)
             
             else:
                 spell_check_results["spell_checked_error"][idx] = Checked(result=False)
-                print(f"300 over, ({len(text)})")
-                
 
         # 동기적으로 각 텍스트에 대해 파싱 수행
         parsed_results = [self.spell_parser.parse(spell_text, original_text, passed_time) for (spell_text, original_text, passed_time) in zip(spell_check_results["spell_checked"], spell_check_results["original_text"], spell_check_results["passed_time"])]
         
         # 글자수가 300 글자가 넘어간거는 오류로 처리하고 동기적으로 삽입
         updated_results = self._insert_spell_checked_errors(spell_check_results, parsed_results)
-        self._results_output(updated_results, is_output)
         return self._process_results(updated_results)
-
 
 
     def _insert_spell_checked_errors(self, spell_check_results, parse_results):
@@ -123,14 +120,6 @@ class AsyncSpellChecker:
         # 업데이트된 결과 개수에 따라 반환 방식 결정
         return updated_results[0] if len(updated_results) == 1 else updated_results
     
-
-    def _results_output(self, texts, is_output):
-        if is_output:
-            print(texts[0]) if len(texts) == 1 else print(texts)
-            return None
-        return None
-
-
     # 세션 종료.
     async def close(self):
         await self.session.close()
