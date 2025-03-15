@@ -33,7 +33,7 @@ class AsyncSpellChecker:
     # 토큰 초기화
     async def _initialize_token(self):
         # 토큰을 생성합니다.
-        print("토큰을 생성합니다.")
+        # print("토큰을 생성합니다.")
         self.token = await self._get_token()
         
     # 토큰 생성을 요청합니다.
