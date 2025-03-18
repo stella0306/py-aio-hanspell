@@ -4,10 +4,18 @@ import re
 from urllib import parse
 import time
 
-from .spell_checker_parser import SpellParser
-from .checked import Checked
-from .headers import *
-from .check_python_version import check_python_version
+try:
+    from .spell_checker_parser import SpellParser
+    from .checked import Checked
+    from .headers import *
+    from .check_python_version import check_python_version
+
+except ImportError:
+    from spell_checker_parser import SpellParser
+    from checked import Checked
+    from headers import *
+    from check_python_version import check_python_version
+
 
 class AsyncSpellChecker:
     def __init__(self) -> None:

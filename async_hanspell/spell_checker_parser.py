@@ -2,9 +2,14 @@ import xml.etree.ElementTree as ET
 from collections import OrderedDict
 import re
 
+try:
+    from .check_result import CheckResult
+    from .checked import Checked
+    
+except ImportError:
+    from check_result import CheckResult
+    from checked import Checked
 
-from .check_result import CheckResult
-from .checked import Checked
 
 def remove_tag(text):
     # 정규 표현식: '<...>'와 그 안의 내용을 모두 삭제합니다.
